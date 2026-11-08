@@ -35,29 +35,29 @@
 
     <div class="rad-view rad-hidden" id="rad-viewB">
         <div class="rad-gridB">
-            <div>
-                <div class="rad-card mb-3">
+            <div class="rad-col">
+                <div class="rad-card">
                     <h6><i class="fas fa-temperature-half me-2"></i>Zones</h6>
                     <div class="rad-zones" id="rad-zonesB"></div>
                 </div>
-                <div class="rad-card">
+                <div class="rad-card rad-grow rad-sparkcard">
                     <h6><i class="fas fa-chart-line me-2"></i>Last 24 h · supply / return / tank</h6>
                     <svg class="rad-spark" id="rad-sparkB" viewBox="0 0 800 150" preserveAspectRatio="none"></svg>
-                    <div class="small text-secondary mt-1">
-                        <span style="color:#ff5a36">■</span> radiant supply &nbsp;
-                        <span style="color:#3fa9f5">■</span> avg zone return &nbsp;
-                        <span style="color:#FFD700">■</span> buffer tank &nbsp;
-                        <span style="color:#777">▮</span> heat pump running
-                        <span class="float-end" id="rad-sparkRange"></span>
+                    <div class="rad-legend-row">
+                        <span><i style="background:#ff6a3d"></i>radiant supply</span>
+                        <span><i style="background:#5ec8ff"></i>avg zone return</span>
+                        <span><i style="background:#ffc35c"></i>buffer tank</span>
+                        <span><i style="background:rgba(60,200,180,.45);height:10px"></i>heat pump running</span>
+                        <span class="ms-auto" id="rad-sparkRange"></span>
                     </div>
                 </div>
             </div>
-            <div>
-                <div class="rad-card mb-3">
+            <div class="rad-col">
+                <div class="rad-card">
                     <h6><i class="fas fa-database me-2"></i>Buffer tank</h6>
                     <div class="rad-tank" id="rad-tankB"></div>
                 </div>
-                <div class="rad-card">
+                <div class="rad-card rad-grow">
                     <h6><i class="fas fa-fan me-2"></i>Heat sources</h6>
                     <div id="rad-hpsB"></div>
                 </div>
@@ -67,18 +67,18 @@
 
     <div class="rad-view rad-hidden" id="rad-viewC">
         <div class="rad-gridC">
-            <div class="rad-card">
+            <div class="rad-card rad-housecard">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="m-0"><i class="fas fa-house me-2"></i>Zones by floor</h6>
                     <div class="rad-legend">10°<div class="bar"></div>25°</div>
                 </div>
                 <svg id="rad-house" viewBox="0 0 1000 620"></svg>
             </div>
-            <div>
-                <div class="rad-sel mb-3" id="rad-selC"></div>
-                <div class="rad-card">
+            <div class="rad-col">
+                <div class="rad-sel" id="rad-selC"></div>
+                <div class="rad-card rad-grow rad-plantcard">
                     <h6><i class="fas fa-gears me-2"></i>Plant</h6>
-                    <svg id="rad-miniPlant" viewBox="0 0 560 230" style="width:100%"></svg>
+                    <svg id="rad-miniPlant" viewBox="0 0 560 230"></svg>
                 </div>
             </div>
         </div>
