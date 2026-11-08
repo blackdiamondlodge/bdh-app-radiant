@@ -79,6 +79,11 @@ class BuildStateTests(TestCase):
         self.assertEqual((hp1["inlet"], hp1["outlet"]), (33.2, 41.0))
         self.assertEqual((hp2["inlet"], hp2["outlet"]), (None, None))
 
+    def test_delta_t_from_thermux_while_running(self):
+        hp1, hp2 = build_state(make_states())["hp"]
+        self.assertEqual(hp1["dT"], round(43.1 - 33.0, 2))
+        self.assertIsNone(hp2["dT"])
+
     def test_zones(self):
         zones = build_state(make_states())["zones"]
         self.assertEqual(list(zones), [z["id"] for z in cfg.ZONES])
