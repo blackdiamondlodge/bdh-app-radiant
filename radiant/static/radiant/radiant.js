@@ -162,40 +162,42 @@
     const w = S.hp.reduce((a, h) => a + (h.w || 0), 0), th = S.hp.reduce((a, h) => a + (h.therm || 0), 0);
     const calling = Object.values(S.zones).filter(zoneOn).length;
     const charging = S.stage1 || S.stage2 || S.backup;
-    const mode = S.season === 'heat' ? '<span style="color:#ff8a6a"><i class="fas fa-fire"></i> Heat</span>'
-      : S.season === 'cool' ? '<span style="color:#7cc5ff"><i class="fas fa-snowflake"></i> Cool</span>'
-      : '<span class="text-secondary">Off</span>';
+    const mode = S.season === 'heat' ? 'Heat' : S.season === 'cool' ? 'Cool' : 'Off';
+    const modeIc = S.season === 'heat' ? 'fa-fire' : S.season === 'cool' ? 'fa-snowflake' : 'fa-power-off';
+    const modeC = S.season === 'heat' ? '#ff8a5c' : S.season === 'cool' ? '#5ec8ff' : '#9fb4c8';
+    const kpi = (ic, c, glow, l, v, sub) => `<div class="rad-kpi"><div class="ic ${glow ? 'glow' : ''}" style="--kc:${c}"><i class="fas ${ic}"></i></div><div class="body"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></div></div>`;
     const energy = H && isNum(H.energyTodayTotal) ? `${f1(H.energyTodayTotal)} kWh` : '—';
-    document.getElementById('rad-strip').innerHTML = `
-      <div class="rad-kpi"><div class="l">Outdoor</div><div class="v">${f1(S.outdoor)}°</div><div class="s">USL station</div></div>
-      <div class="rad-kpi"><div class="l">System mode</div><div class="v">${mode}</div><div class="s">${S.vacation ? '<span class="pill warn">Vacation mode</span>' : 'Home mode'}</div></div>
-      <div class="rad-kpi"><div class="l">Buffer tank (AECO)</div><div class="v" style="color:${tcol(S.tank)}">${f1(S.tank)}°</div><div class="s">target ${f1(S.tankTarget)}° · ${charging ? '<span class="pill on">charging</span>' : 'satisfied'}</div></div>
-      <div class="rad-kpi"><div class="l">Heat pumps</div><div class="v">${running}<span class="sub"> / ${S.hp.length} running</span></div><div class="s">stage1 ${S.stage1 ? '●' : '○'} stage2 ${S.stage2 ? '●' : '○'} backup ${S.backup ? '●' : '○'}</div></div>
-      <div class="rad-kpi"><div class="l">Power / output</div><div class="v">${kw(w)} kW</div><div class="s">${(th / 1000).toFixed(1)} kW thermal · COP ${w > 0 && th > 0 ? (th / w).toFixed(2) : '—'}</div></div>
-      <div class="rad-kpi"><div class="l">Zone demand</div><div class="v">${calling}<span class="sub"> / ${ZONES.length} calling</span></div><div class="s">radiant supply ${f1(S.radSupply)}°</div></div>
-      <div class="rad-kpi"><div class="l">Energy today</div><div class="v">${energy}</div><div class="s">heat pump electrical</div></div>`;
+    document.getElementById('rad-strip').innerHTML = [
+      kpi('fa-temperature-half', '#9fd3ff', false, 'Outdoor', `${f1(S.outdoor)}°`, 'USL station'),
+      kpi(modeIc, modeC, S.season !== 'off', 'System mode', `<span style="color:${modeC}">${mode}</span>`, S.vacation ? '<span class="pill warn">Vacation mode</span>' : 'Home mode'),
+      kpi('fa-database', tcol(S.tank), charging, 'Buffer tank', `<span style="color:${tcol(S.tank)}">${f1(S.tank)}°</span>`, `target ${f1(S.tankTarget)}° · ${charging ? '<span class="pill on">charging</span>' : 'satisfied'}`),
+      kpi('fa-fan', '#3cc8b4', running > 0, 'Heat pumps', `${running}<span class="sub"> / ${S.hp.length} running</span>`, `stage1 ${S.stage1 ? '●' : '○'} stage2 ${S.stage2 ? '●' : '○'} backup ${S.backup ? '●' : '○'}`),
+      kpi('fa-bolt', '#ffc35c', w > 0, 'Power / output', `${kw(w)} kW`, `${(th / 1000).toFixed(1)} kW thermal · COP ${w > 0 && th > 0 ? (th / w).toFixed(2) : '—'}`),
+      kpi('fa-house-chimney', '#ff8a5c', calling > 0, 'Zone demand', `${calling}<span class="sub"> / ${ZONES.length} calling</span>`, `radiant supply ${f1(S.radSupply)}°`),
+      kpi('fa-plug', '#b79cff', false, 'Energy today', energy, 'heat pump electrical'),
+    ].join('');
   }
 
   // ── Layout A: mechanical room schematic ─────────────────────────────
   function renderA() {
     let o = '';
-    const pipe = (d, t, on) => `<path class="pipe" d="${d}" stroke="#1b1b1b" style="stroke-width:17"/><path class="pipe" d="${d}" stroke="${tcol(t)}"/><path class="flow ${on ? 'on' : 'off'}" d="${d}"/>`;
-    const chip = (x, y, t, label) => `<g class="tchip"><rect x="${x - 34}" y="${y - 14}" width="68" height="26" rx="6"/><text x="${x}" y="${y + 5}" text-anchor="middle">${f1(t)}°</text>${label ? `<text x="${x}" y="${y - 20}" text-anchor="middle" style="font-weight:normal;fill:#999;font-size:11px">${label}</text>` : ''}</g>`;
+    const pipe = (d, t, on) => `<path class="pipe" d="${d}" stroke="#05080d" style="stroke-width:15;opacity:.7"/>${on ? `<path class="pipe glow" d="${d}" stroke="${tcol(t)}"/>` : ''}<path class="pipe" d="${d}" stroke="${tcol(t)}" ${on ? '' : 'stroke-opacity=".55"'}/><path class="flow ${on ? 'on' : 'off'}" d="${d}"/>`;
+    const chip = (x, y, t, label) => `<g class="tchip"><rect x="${x - 34}" y="${y - 14}" width="68" height="26" rx="13"/><text x="${x}" y="${y + 5}" text-anchor="middle">${f1(t)}°</text>${label ? `<text x="${x}" y="${y - 20}" text-anchor="middle" style="font-weight:normal;fill:rgba(232,238,245,.6);font-size:11px">${label}</text>` : ''}</g>`;
     const tankX = 820, tankY = 150, tankW = 170, tankH = 430;
     const anyZone = Object.values(S.zones).some(zoneOn);
 
-    o += '<text x="30" y="40" class="lbl-s" style="font-size:13px;letter-spacing:.1em">PRIMARY LOOP</text>';
-    o += '<text x="1080" y="40" class="lbl-s" style="font-size:13px;letter-spacing:.1em">SECONDARY LOOP · RADIANT ZONES</text>';
-    o += '<line x1="1050" y1="30" x2="1050" y2="830" stroke="#333" stroke-dasharray="6 6"/>';
+    o += '<text x="30" y="40" class="lbl-h">PRIMARY LOOP</text>';
+    o += '<text x="1080" y="40" class="lbl-h">SECONDARY LOOP · RADIANT ZONES</text>';
+    o += '<line x1="1050" y1="30" x2="1050" y2="830" stroke="rgba(255,255,255,.1)" stroke-dasharray="4 8"/>';
 
     const srcs = [...S.hp.map((h, i) => ({ kind: 'hp', h, i, y: 110 + i * 220 })), { kind: 'bk', y: 560 }];
     srcs.forEach(s => {
       const y = s.y, run = s.kind === 'hp' ? s.h.running : S.backup, x = 40, w = 360, h = 180;
-      o += `<rect class="box ${run ? 'run' : ''}" x="${x}" y="${y}" width="${w}" height="${s.kind === 'bk' ? 120 : h}" rx="12"/>`;
+      o += `<rect class="box ${run ? 'run' : ''}" x="${x}" y="${y}" width="${w}" height="${s.kind === 'bk' ? 120 : h}" rx="18"/>`;
       if (s.kind === 'hp') {
         const P = s.h;
-        o += `<g transform="translate(${x + 58},${y + 64})"><circle r="40" fill="#1b1b1b" stroke="#555" stroke-width="2"/>
-          <g class="fan ${run ? 'on' : ''}"><path d="M0,-34 C14,-20 10,-6 0,0 C-10,-6 -14,-20 0,-34Z M34,0 C20,14 6,10 0,0 C6,-10 20,-14 34,0Z M0,34 C-14,20 -10,6 0,0 C10,6 14,20 0,34Z M-34,0 C-20,-14 -6,-10 0,0 C-6,10 -20,14 -34,0Z" fill="${run ? (P.op === 'cooling' ? '#3fa9f5' : '#ff8a6a') : '#666'}"/></g></g>`;
+        o += `<g transform="translate(${x + 58},${y + 64})"><circle r="42" fill="rgba(0,0,0,.35)" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+          <g class="fan ${run ? 'on' : ''}"><path d="M0,-34 C14,-20 10,-6 0,0 C-10,-6 -14,-20 0,-34Z M34,0 C20,14 6,10 0,0 C6,-10 20,-14 34,0Z M0,34 C-14,20 -10,6 0,0 C10,6 14,20 0,34Z M-34,0 C-20,-14 -6,-10 0,0 C-6,10 -20,14 -34,0Z" fill="${run ? (P.op === 'cooling' ? '#5ec8ff' : '#ff8a5c') : 'rgba(255,255,255,.25)'}" ${run ? `style="filter:drop-shadow(0 0 6px ${P.op === 'cooling' ? '#5ec8ff' : '#ff8a5c'})"` : ''}/></g><circle r="6" fill="rgba(255,255,255,.6)"/></g>`;
         o += `<text x="${x + 120}" y="${y + 36}" class="lbl-b" style="font-size:20px">${P.name}</text>`;
         o += `<foreignObject x="${x + 120}" y="${y + 46}" width="235" height="30"><div xmlns="http://www.w3.org/1999/xhtml">${hpPill(P)} ${faultPill(P)} ${P.defrost ? '<span class="pill warn">defrost</span>' : ''}</div></foreignObject>`;
         o += `<text x="${x + 120}" y="${y + 100}" class="lbl">${Math.round(P.hz)} Hz · ${kw(P.w)} kW</text>`;
@@ -221,10 +223,14 @@
 
     const fillTop = tcol(isNum(S.tank) ? S.tank + 2 : null), fillBot = tcol(S.hpReturn);
     o += `<defs><linearGradient id="rad-tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${fillTop}"/><stop offset="1" stop-color="${fillBot}"/></linearGradient></defs>`;
-    o += `<rect x="${tankX}" y="${tankY}" width="${tankW}" height="${tankH}" rx="70" fill="url(#rad-tg)" stroke="#888" stroke-width="3" opacity=".9"/>`;
-    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 - 30}" text-anchor="middle" class="lbl" style="fill:#111;font-weight:bold">BUFFER</text>`;
-    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 + 14}" text-anchor="middle" style="fill:#111;font-size:44px;font-weight:bold">${f1(S.tank)}°</text>`;
-    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 + 44}" text-anchor="middle" style="fill:#111;font-size:16px">target ${f1(S.tankTarget)}°</text>`;
+    o += `<defs><linearGradient id="rad-gloss" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".0"/><stop offset=".18" stop-color="#fff" stop-opacity=".35"/><stop offset=".32" stop-color="#fff" stop-opacity="0"/><stop offset=".85" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient>
+      <filter id="rad-tglow" x="-40%" y="-20%" width="180%" height="140%"><feGaussianBlur stdDeviation="18"/></filter></defs>`;
+    o += `<rect x="${tankX}" y="${tankY}" width="${tankW}" height="${tankH}" rx="70" fill="${fillTop}" opacity=".35" filter="url(#rad-tglow)"/>`;
+    o += `<rect x="${tankX}" y="${tankY}" width="${tankW}" height="${tankH}" rx="70" fill="url(#rad-tg)"/>`;
+    o += `<rect x="${tankX}" y="${tankY}" width="${tankW}" height="${tankH}" rx="70" fill="url(#rad-gloss)" stroke="rgba(255,255,255,.35)" stroke-width="2"/>`;
+    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 - 30}" text-anchor="middle" style="fill:rgba(10,14,20,.75);font-size:13px;letter-spacing:.25em;font-weight:700">BUFFER</text>`;
+    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 + 14}" text-anchor="middle" style="fill:#0a0e14;font-size:46px;font-weight:700">${f1(S.tank)}°</text>`;
+    o += `<text x="${tankX + tankW / 2}" y="${tankY + tankH / 2 + 44}" text-anchor="middle" style="fill:rgba(10,14,20,.75);font-size:15px;font-weight:600">target ${f1(S.tankTarget)}°</text>`;
     o += `<text x="${tankX + tankW / 2}" y="${tankY - 18}" text-anchor="middle" class="lbl-s">AECO-1988 · ${S.season} demand</text>`;
 
     const hdrX = 1120, zy0 = 90, zgap = 150, zx = 1260, rhX = 1170;
@@ -234,20 +240,20 @@
       const Z = S.zones[z.id], y = zy0 + i * zgap, on = zoneOn(Z), ok = canSet(Z);
       o += pipe(`M${hdrX},${y + 20} L${zx},${y + 20}`, S.radSupply, on);
       o += pipe(`M${zx},${y + 80} L${rhX},${y + 80}`, Z.ret, on);
-      o += `<circle cx="${hdrX + 70}" cy="${y + 20}" r="13" fill="${on ? '#4caf50' : '#444'}" stroke="#222" stroke-width="2"/><text x="${hdrX + 70}" y="${y + 25}" text-anchor="middle" style="fill:#fff;font-size:13px">${on ? '▶' : '■'}</text>`;
+      o += `<circle cx="${hdrX + 70}" cy="${y + 20}" r="13" fill="${on ? '#3cc8b4' : '#2a3442'}" stroke="rgba(255,255,255,.25)" stroke-width="1.5" ${on ? 'style="filter:drop-shadow(0 0 6px #3cc8b4)"' : ''}/><text x="${hdrX + 70}" y="${y + 25}" text-anchor="middle" style="fill:#fff;font-size:13px">${on ? '▶' : '■'}</text>`;
       o += chip(rhX + 48, y + 80, Z.ret, '');
-      const cx = zx, cw = 580, ch = 110, col = Z.act === 'heating' ? '#ff5a36' : Z.act === 'cooling' ? '#3fa9f5' : '#555';
-      o += `<rect x="${cx}" y="${y}" width="${cw}" height="${ch}" rx="10" fill="#2a2a2a" stroke="${col}" stroke-width="${on ? 2.5 : 1.5}"/>`;
-      o += `<rect x="${cx}" y="${y}" width="8" height="${ch}" rx="4" fill="${col}"/>`;
+      const cx = zx, cw = 580, ch = 110, col = Z.act === 'heating' ? '#ff6a3d' : Z.act === 'cooling' ? '#5ec8ff' : 'rgba(255,255,255,.14)';
+      o += `<rect x="${cx}" y="${y}" width="${cw}" height="${ch}" rx="18" fill="${on ? (Z.act === 'cooling' ? 'rgba(94,200,255,.1)' : 'rgba(255,106,61,.1)') : 'rgba(255,255,255,.05)'}" stroke="${col}" stroke-width="${on ? 1.8 : 1}" ${on ? `style="filter:drop-shadow(0 0 10px ${col}55)"` : ''}/>`;
+      o += `<rect x="${cx + 1}" y="${y + 16}" width="4" height="${ch - 32}" rx="2" fill="${col}"/>`;
       o += `<text x="${cx + 24}" y="${y + 32}" class="lbl" style="font-weight:bold;font-size:17px">${z.name}</text>`;
       o += `<foreignObject x="${cx + 24}" y="${y + 42}" width="180" height="28"><div xmlns="http://www.w3.org/1999/xhtml">${actPill(Z.act)}</div></foreignObject>`;
       o += `<text x="${cx + 24}" y="${y + 96}" class="lbl-s">return ${f1(Z.ret)}° · ${on ? `ΔT ${f1(delta(S.radSupply, Z.ret))}°` : 'no flow'}</text>`;
-      o += `<text x="${cx + 250}" y="${y + 66}" text-anchor="middle" style="fill:#fff;font-size:40px;font-weight:bold">${f1(Z.cur)}°</text>`;
+      o += `<text x="${cx + 250}" y="${y + 66}" text-anchor="middle" style="fill:#fff;font-size:42px;font-weight:600">${f1(Z.cur)}°</text>`;
       o += `<text x="${cx + 250}" y="${y + 92}" text-anchor="middle" class="lbl-s">room</text>`;
-      o += `<g class="zbtn ${ok ? '' : 'disabled'}" ${ok ? `data-bump="${z.id}" data-d="-1"` : ''}><rect x="${cx + 340}" y="${y + 30}" width="52" height="52" rx="8"/><text x="${cx + 366}" y="${y + 63}" text-anchor="middle">−</text></g>`;
-      o += `<text class="${spCls(z.id)}" x="${cx + 446}" y="${y + 64}" text-anchor="middle" style="fill:#FFD700;font-size:${Z.mode === 'heat_cool' ? 20 : 28}px;font-weight:bold">${spText(Z)}</text>`;
+      o += `<g class="zbtn ${ok ? '' : 'disabled'}" ${ok ? `data-bump="${z.id}" data-d="-1"` : ''}><circle cx="${cx + 366}" cy="${y + 56}" r="26"/><text x="${cx + 366}" y="${y + 64}" text-anchor="middle">−</text></g>`;
+      o += `<text class="${spCls(z.id)}" x="${cx + 446}" y="${y + 64}" text-anchor="middle" style="fill:#ffc35c;font-size:${Z.mode === 'heat_cool' ? 20 : 28}px;font-weight:bold">${spText(Z)}</text>`;
       o += `<text x="${cx + 446}" y="${y + 90}" text-anchor="middle" class="lbl-s" data-pstat="${z.id}" data-default="set">${spStatus(z.id, 'set')}</text>`;
-      o += `<g class="zbtn ${ok ? '' : 'disabled'}" ${ok ? `data-bump="${z.id}" data-d="1"` : ''}><rect x="${cx + 500}" y="${y + 30}" width="52" height="52" rx="8"/><text x="${cx + 526}" y="${y + 63}" text-anchor="middle">+</text></g>`;
+      o += `<g class="zbtn ${ok ? '' : 'disabled'}" ${ok ? `data-bump="${z.id}" data-d="1"` : ''}><circle cx="${cx + 526}" cy="${y + 56}" r="26"/><text x="${cx + 526}" y="${y + 64}" text-anchor="middle">+</text></g>`;
     });
     o += pipe(`M${rhX},${zy0 + 80} L${rhX},800 L${tankX + 120},800 L${tankX + 120},${tankY + tankH - 6}`, avgRet(), anyZone);
     o += `<text x="${tankX + 135}" y="825" class="lbl-s">mixed zone return → buffer</text>`;
@@ -276,19 +282,19 @@
     const st = (on, label) => `<span class="pill ${on ? 'on' : 'idle'}">${label}</span>`;
     document.getElementById('rad-tankB').innerHTML = `
       <div class="rad-tankbar"><div class="fill" style="height:${pct(S.tank)}%;background:linear-gradient(${tcol(isNum(S.tank) ? S.tank + 2 : null)},${tcol(S.hpReturn)})"></div><div class="mark" style="bottom:${pct(S.tankTarget)}%"></div></div>
-      <div><div style="font-size:2.6rem;font-weight:bold;color:${tcol(S.tank)}">${f1(S.tank)}°</div><div class="text-secondary">target <span style="color:#FFD700">${f1(S.tankTarget)}°</span> (${S.season})</div>
+      <div><div style="font-size:3rem;font-weight:600;line-height:1;color:${tcol(S.tank)};text-shadow:0 0 24px ${tcol(S.tank)}66">${f1(S.tank)}°</div><div class="text-secondary">target <span style="color:#ffc35c">${f1(S.tankTarget)}°</span> (${S.season})</div>
         <table class="rad-mini mt-2 small"><tr><td>Radiant supply</td><td>${f1(S.radSupply)}°</td></tr><tr><td>Return to HPs</td><td>${f1(S.hpReturn)}°</td></tr>
         <tr><td>AECO stages</td><td>${st(S.stage1, '1')} ${st(S.stage2, '2')} ${st(S.backup, 'backup')}</td></tr></table></div>`;
 
     document.getElementById('rad-hpsB').innerHTML = S.hp.map(P => {
       const run = P.running;
-      return `<div class="rad-hp"><div class="row1"><b><i class="fas fa-fan ${run ? 'fa-spin' : ''} me-2" style="color:${run ? (P.op === 'cooling' ? '#3fa9f5' : '#ff8a6a') : '#666'}"></i>${P.name}</b>
+      return `<div class="rad-hp ${run ? 'run' : ''}"><div class="row1"><b><i class="fas fa-fan ${run ? 'fa-spin' : ''} me-2" style="color:${run ? (P.op === 'cooling' ? '#5ec8ff' : '#ff8a5c') : 'rgba(255,255,255,.3)'}"></i>${P.name}</b>
         <span>${hpPill(P)} ${faultPill(P)} ${P.defrost ? '<span class="pill warn">defrost</span>' : ''}</span></div>
         <div class="stats"><div><div class="l">Compressor</div><div class="v">${Math.round(P.hz)} Hz</div></div><div><div class="l">Power</div><div class="v">${kw(P.w)} kW</div></div>
         <div><div class="l">COP</div><div class="v">${isNum(P.cop) ? P.cop.toFixed(2) : '—'}</div></div><div><div class="l">Supply</div><div class="v">${f1(P.sup)}°</div></div>
         <div><div class="l">In</div><div class="v">${deg(P.inlet)}</div></div><div><div class="l">Out</div><div class="v">${deg(P.outlet)}</div></div>
         <div><div class="l">Flow</div><div class="v">${isNum(P.flow) ? Math.round(P.flow) : '—'} L/m</div></div><div><div class="l">ΔT</div><div class="v">${f1(P.dT)}°</div></div></div></div>`;
-    }).join('') + `<div class="rad-hp d-flex justify-content-between align-items-center"><b>Backup heat</b><span>${S.backup ? '<span class="pill on">running</span>' : '<span class="pill idle">off</span>'} supply ${f1(S.backupSup)}°</span></div>`;
+    }).join('') + `<div class="rad-hp ${S.backup ? 'run' : ''} d-flex justify-content-between align-items-center"><b><i class="fas fa-fire-flame-simple me-2" style="color:${S.backup ? '#ff8a5c' : 'rgba(255,255,255,.3)'}"></i>Backup heat</b><span>${S.backup ? '<span class="pill on">running</span>' : '<span class="pill idle">off</span>'} supply ${f1(S.backupSup)}°</span></div>`;
 
     renderSpark();
   }
@@ -296,19 +302,19 @@
   function renderSpark() {
     const g = document.getElementById('rad-sparkB');
     const range = document.getElementById('rad-sparkRange');
-    if (!H) { g.innerHTML = '<text x="400" y="80" fill="#777" font-size="16" text-anchor="middle">loading history…</text>'; range.textContent = ''; return; }
-    const series = [[H.tank, '#FFD700'], [H.supply, '#ff5a36'], [H.avgReturn, '#3fa9f5']];
+    if (!H) { g.innerHTML = '<text x="400" y="80" fill="rgba(232,238,245,.5)" font-size="16" text-anchor="middle">loading history…</text>'; range.textContent = ''; return; }
+    const series = [[H.tank, '#ffc35c'], [H.supply, '#ff6a3d'], [H.avgReturn, '#5ec8ff']];
     const all = series.flatMap(([s]) => s).filter(isNum);
-    if (!all.length) { g.innerHTML = '<text x="400" y="80" fill="#777" font-size="16" text-anchor="middle">no history</text>'; range.textContent = ''; return; }
+    if (!all.length) { g.innerHTML = '<text x="400" y="80" fill="rgba(232,238,245,.5)" font-size="16" text-anchor="middle">no history</text>'; range.textContent = ''; return; }
     const lo = Math.floor(Math.min(...all) - 1), hi = Math.ceil(Math.max(...all) + 1);
     const n = H.tank.length, W = 800, HT = 150;
     const x = k => k * W / (n - 1), y = v => HT - (v - lo) / (hi - lo) * HT;
     let p = '';
-    H.hpRunning.forEach((on, k) => { if (on) p += `<rect x="${k * W / n}" y="0" width="${W / n + 0.5}" height="${HT}" fill="#ffffff" opacity=".07"/>`; });
+    H.hpRunning.forEach((on, k) => { if (on) p += `<rect x="${k * W / n}" y="0" width="${W / n + 0.5}" height="${HT}" fill="#3cc8b4" opacity=".1"/>`; });
     series.forEach(([s, c]) => {
       // break the line across gaps
       let seg = [];
-      const flush = () => { if (seg.length > 1) p += `<polyline fill="none" stroke="${c}" stroke-width="2" vector-effect="non-scaling-stroke" points="${seg.join(' ')}"/>`; seg = []; };
+      const flush = () => { if (seg.length > 1) p += `<polyline fill="none" stroke="${c}" stroke-width="2.5" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px ${c}88)" vector-effect="non-scaling-stroke" points="${seg.join(' ')}"/>`; seg = []; };
       s.forEach((v, k) => { if (isNum(v)) seg.push(`${x(k).toFixed(1)},${y(v).toFixed(1)}`); else flush(); });
       flush();
     });
@@ -326,39 +332,39 @@
   };
 
   function renderC() {
-    let o = '<polygon points="40,40 500,0 960,40" fill="#3a3a3a"/><rect x="20" y="585" width="960" height="14" fill="#5a4a3a"/>';
+    let o = '<defs><linearGradient id="rad-roof" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4d66"/><stop offset="1" stop-color="#1c2738"/></linearGradient></defs>'
+      + '<polygon points="30,42 500,0 970,42" fill="url(#rad-roof)" stroke="rgba(255,255,255,.15)"/><rect x="20" y="588" width="960" height="10" rx="5" fill="rgba(255,255,255,.12)"/>';
     ZONES.forEach(z => {
       const r = ROOMS[z.id];
       if (!r) return;
       const Z = S.zones[z.id], on = zoneOn(Z), sel = selZone === z.id;
-      o += `<rect class="room" data-select="${z.id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6" fill="${tcol(Z.cur, 10, 25)}" fill-opacity=".85" ${sel ? 'stroke="#FFD700" stroke-width="5"' : ''}/>`;
-      if (on) for (let k = 0; k < 6; k++) o += `<path d="M${r.x + 20 + k * (r.w - 40) / 5},${r.y + r.h - 14} q8,-8 16,0 t16,0" stroke="${Z.act === 'cooling' ? '#1f6fb5' : '#b02a10'}" stroke-width="3" fill="none" opacity=".8" pointer-events="none"/>`;
-      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 30}" style="font-size:18px;font-weight:bold;fill:#111">${z.name}</text>`;
-      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 80}" style="font-size:40px;font-weight:bold;fill:#111">${f1(Z.cur)}°</text>`;
-      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 108}" style="font-size:15px;fill:#222">set ${spText(Z)} · ${Z.act}</text>`;
-      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 130}" style="font-size:13px;fill:#333">return ${f1(Z.ret)}°</text>`;
+      o += `<rect class="room" data-select="${z.id}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="16" fill="${tcol(Z.cur, 10, 25)}" fill-opacity="${sel ? .42 : .28}" stroke="${sel ? '#ffc35c' : tcol(Z.cur, 10, 25)}" stroke-opacity="${sel ? 1 : .6}" stroke-width="${sel ? 3 : 1.5}" ${sel ? 'style="filter:drop-shadow(0 0 12px rgba(255,195,92,.55))"' : ''}/>`;
+      if (on) for (let k = 0; k < 6; k++) o += `<path d="M${r.x + 20 + k * (r.w - 72) / 5},${r.y + r.h - 14} q8,-8 16,0 t16,0" stroke="${Z.act === 'cooling' ? '#5ec8ff' : '#ff6a3d'}" stroke-width="3" fill="none" opacity=".9" pointer-events="none"/>`;
+      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 30}" style="font-size:17px;font-weight:600;fill:#fff">${z.name}</text>`;
+      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 80}" style="font-size:42px;font-weight:600;fill:#fff">${f1(Z.cur)}°</text>`;
+      o += `<text class="roomtxt" x="${r.x + 16}" y="${r.y + 108}" style="font-size:14px;fill:rgba(255,255,255,.8)">set ${spText(Z)} · ${Z.act} · return ${f1(Z.ret)}°</text>`;
     });
     document.getElementById('rad-house').innerHTML = o;
 
     const Z = S.zones[selZone];
     document.getElementById('rad-selC').innerHTML = `<div class="d-flex justify-content-between align-items-center"><h5 class="m-0">${Z.name}</h5>${actPill(Z.act)}</div>
       <div class="d-flex align-items-center justify-content-between mt-3">
-        <div><div class="text-secondary small">ROOM</div><div class="rad-bigdial">${f1(Z.cur)}°</div></div>
-        <div><div class="text-secondary small text-center">SETPOINT</div>${setpointControl(Z, true)}</div></div>
+        <div><div class="rad-kl">Room</div><div class="rad-bigdial">${f1(Z.cur)}°</div></div>
+        <div><div class="rad-kl text-center">Setpoint</div>${setpointControl(Z, true)}</div></div>
       <table class="rad-mini mt-3"><tr><td>Floor supply (shared)</td><td>${f1(S.radSupply)}°</td></tr><tr><td>Zone return</td><td>${f1(Z.ret)}°</td></tr>
       <tr><td>Loop ΔT</td><td>${zoneOn(Z) ? f1(delta(S.radSupply, Z.ret)) + '°' : 'no flow'}</td></tr>
       ${isNum(Z.humidity) ? `<tr><td>Humidity</td><td>${Math.round(Z.humidity)}%</td></tr>` : ''}</table>`;
 
     let m = '';
     S.hp.forEach((P, i) => {
-      m += `<rect x="10" y="${20 + i * 70}" width="150" height="56" rx="8" fill="#333" stroke="${P.running ? '#4caf50' : '#555'}" stroke-width="2"/>
-        <text x="22" y="${44 + i * 70}" fill="#fff" font-size="14" font-weight="bold">HP${i + 1} ${P.running ? '●' : '○'}</text><text x="22" y="${64 + i * 70}" fill="#aaa" font-size="12">${Math.round(P.hz)} Hz · ${isNum(P.w) ? (P.w / 1000).toFixed(1) : '—'} kW</text>
-        <line x1="160" y1="${48 + i * 70}" x2="250" y2="${48 + i * 70}" stroke="${tcol(P.sup)}" stroke-width="6"/><text x="200" y="${40 + i * 70}" fill="#ddd" font-size="12" text-anchor="middle">${f1(P.sup)}°</text>`;
+      m += `<rect x="10" y="${20 + i * 70}" width="150" height="56" rx="12" fill="rgba(255,255,255,.06)" stroke="${P.running ? '#3cc8b4' : 'rgba(255,255,255,.14)'}" stroke-width="1.5"/>
+        <text x="22" y="${44 + i * 70}" fill="#fff" font-size="14" font-weight="bold">HP${i + 1} ${P.running ? '●' : '○'}</text><text x="22" y="${64 + i * 70}" fill="rgba(232,238,245,.6)" font-size="12">${Math.round(P.hz)} Hz · ${isNum(P.w) ? (P.w / 1000).toFixed(1) : '—'} kW</text>
+        <line x1="160" y1="${48 + i * 70}" x2="250" y2="${48 + i * 70}" stroke="${tcol(P.sup)}" stroke-width="6" stroke-linecap="round"/><text x="200" y="${40 + i * 70}" fill="rgba(232,238,245,.75)" font-size="12" text-anchor="middle">${f1(P.sup)}°</text>`;
     });
-    m += `<rect x="10" y="160" width="150" height="50" rx="8" fill="#333" stroke="${S.backup ? '#4caf50' : '#555'}" stroke-width="2"/><text x="22" y="190" fill="#fff" font-size="14" font-weight="bold">Backup ${S.backup ? '●' : '○'}</text>`;
-    m += `<rect x="250" y="20" width="90" height="190" rx="40" fill="${tcol(S.tank)}" stroke="#888" stroke-width="2"/><text x="295" y="120" fill="#111" font-size="22" font-weight="bold" text-anchor="middle">${f1(S.tank)}°</text><text x="295" y="142" fill="#111" font-size="11" text-anchor="middle">tgt ${f1(S.tankTarget)}°</text>`;
-    m += `<line x1="340" y1="60" x2="550" y2="60" stroke="${tcol(S.radSupply)}" stroke-width="6"/><text x="445" y="50" fill="#ddd" font-size="12" text-anchor="middle">supply ${f1(S.radSupply)}°</text>`;
-    m += `<line x1="340" y1="180" x2="550" y2="180" stroke="${tcol(avgRet())}" stroke-width="6"/><text x="445" y="170" fill="#ddd" font-size="12" text-anchor="middle">avg return ${f1(avgRet())}°</text>`;
+    m += `<rect x="10" y="160" width="150" height="50" rx="12" fill="rgba(255,255,255,.06)" stroke="${S.backup ? '#3cc8b4' : 'rgba(255,255,255,.14)'}" stroke-width="1.5"/><text x="22" y="190" fill="#fff" font-size="14" font-weight="bold">Backup ${S.backup ? '●' : '○'}</text>`;
+    m += `<rect x="250" y="20" width="90" height="190" rx="40" fill="${tcol(S.tank)}" stroke="rgba(255,255,255,.35)" stroke-width="2" style="filter:drop-shadow(0 0 10px ${tcol(S.tank)}88)"/><text x="295" y="120" fill="#111" font-size="22" font-weight="bold" text-anchor="middle">${f1(S.tank)}°</text><text x="295" y="142" fill="#111" font-size="11" text-anchor="middle">tgt ${f1(S.tankTarget)}°</text>`;
+    m += `<line x1="340" y1="60" x2="550" y2="60" stroke="${tcol(S.radSupply)}" stroke-width="6" stroke-linecap="round"/><text x="445" y="50" fill="rgba(232,238,245,.75)" font-size="12" text-anchor="middle">supply ${f1(S.radSupply)}°</text>`;
+    m += `<line x1="340" y1="180" x2="550" y2="180" stroke="${tcol(avgRet())}" stroke-width="6" stroke-linecap="round"/><text x="445" y="170" fill="rgba(232,238,245,.75)" font-size="12" text-anchor="middle">avg return ${f1(avgRet())}°</text>`;
     document.getElementById('rad-miniPlant').innerHTML = m;
   }
 
