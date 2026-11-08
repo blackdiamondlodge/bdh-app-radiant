@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bdh-app-radiant"
-version = "1.0.0"
+version = "1.0.1"
 description = "Black Diamond Hub app: radiant heating and heat-pump plant dashboard (Home Assistant)"
 readme = "README.md"
 license = { text = "MIT" }

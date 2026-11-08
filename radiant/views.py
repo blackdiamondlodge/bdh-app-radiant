@@ -69,6 +69,11 @@ def _heat_pump(states, hp):
     if cop is None and power > 0 and thermal > 0:
         cop = round(thermal / power, 2)
     running = op in cfg.HP_RUNNING_OPS or _on(states, hp["compressor"])
+    supply = _num(states, hp["supply"])
+    hp_return = _num(states, cfg.THERMUX["hp_return"])
+    # The shared return only describes this pump's water while it runs.
+    delta_t = (round(supply - hp_return, 2)
+               if running and supply is not None and hp_return is not None else None)
     # Inlet/outlet sensors sit outdoors, so they only read loop water while running.
     return {
         "key": hp["key"],
@@ -84,8 +89,8 @@ def _heat_pump(states, hp):
         "flow": _num(states, hp["flow"]),
         "fault": _str(states, hp["fault"], "unknown"),
         "defrost": _on(states, hp["defrost"]),
-        "sup": _num(states, hp["supply"]),
-        "dT": _num(states, hp["delta_t"]),
+        "sup": supply,
+        "dT": delta_t,
     }
 
 
