@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Radiant System{% endblock %}
+
+{% block navbar_extras %}
+<div class="navbar-extras">
+    <div class="rad-tabs" id="rad-tabs">
+        <button type="button" class="navbar-toggle-btn" data-layout="A"><i class="fas fa-gears me-1"></i>Mechanical room</button>
+        <button type="button" class="navbar-toggle-btn" data-layout="B"><i class="fas fa-table-cells-large me-1"></i>Overview</button>
+        <button type="button" class="navbar-toggle-btn" data-layout="C"><i class="fas fa-house me-1"></i>House</button>
+    </div>
+    <span class="rad-status" id="rad-status">connecting…</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'radiant/radiant.css' %}">
+{{ zones|json_script:"radiant-zones" }}
+
+<div class="rad-page" id="radiant-root"
+     data-states-url="{% url 'radiant_states' %}"
+     data-history-url="{% url 'radiant_history' %}"
+     data-setpoint-url="{% url 'radiant_setpoint' %}"
+     data-debounce-ms="{{ debounce_ms }}"
+     data-step="{{ setpoint_step }}"
+     data-csrf="{{ csrf_token }}">
+
+    <div class="rad-strip" id="rad-strip"></div>
+    <div class="rad-loading" id="rad-loading">Loading radiant system…</div>
+
+    <div class="rad-view rad-hidden" id="rad-viewA">
+        <svg id="rad-schem" viewBox="0 0 1880 860" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <div class="rad-view rad-hidden" id="rad-viewB">
+        <div class="rad-gridB">
+            <div>
+                <div class="rad-card mb-3">
+                    <h6><i class="fas fa-temperature-half me-2"></i>Zones</h6>
+                    <div class="rad-zones" id="rad-zonesB"></div>
+                </div>
+                <div class="rad-card">
+                    <h6><i class="fas fa-chart-line me-2"></i>Last 24 h · supply / return / tank</h6>
+                    <svg class="rad-spark" id="rad-sparkB" viewBox="0 0 800 150" preserveAspectRatio="none"></svg>
+                    <div class="small text-secondary mt-1">
+                        <span style="color:#ff5a36">■</span> radiant supply &nbsp;
+                        <span style="color:#3fa9f5">■</span> avg zone return &nbsp;
+                        <span style="color:#FFD700">■</span> buffer tank &nbsp;
+                        <span style="color:#777">▮</span> heat pump running
+                        <span class="float-end" id="rad-sparkRange"></span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="rad-card mb-3">
+                    <h6><i class="fas fa-database me-2"></i>Buffer tank</h6>
+                    <div class="rad-tank" id="rad-tankB"></div>
+                </div>
+                <div class="rad-card">
+                    <h6><i class="fas fa-fan me-2"></i>Heat sources</h6>
+                    <div id="rad-hpsB"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rad-view rad-hidden" id="rad-viewC">
+        <div class="rad-gridC">
+            <div class="rad-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="m-0"><i class="fas fa-house me-2"></i>Zones by floor</h6>
+                    <div class="rad-legend">10°<div class="bar"></div>25°</div>
+                </div>
+                <svg id="rad-house" viewBox="0 0 1000 620"></svg>
+            </div>
+            <div>
+                <div class="rad-sel mb-3" id="rad-selC"></div>
+                <div class="rad-card">
+                    <h6><i class="fas fa-gears me-2"></i>Plant</h6>
+                    <svg id="rad-miniPlant" viewBox="0 0 560 230" style="width:100%"></svg>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'radiant/radiant.js' %}"></script>
+{% endblock %}

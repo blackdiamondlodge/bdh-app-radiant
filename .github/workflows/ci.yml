@@ -1,0 +1,12 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  hub:
+    uses: blackdiamondlodge/bdh-sdk/.github/workflows/app-ci.yml@v0
+    with:
+      app_id: radiant

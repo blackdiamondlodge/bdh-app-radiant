@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bdh-app-radiant"
+version = "1.0.0"
+description = "Black Diamond Hub app: radiant heating and heat-pump plant dashboard (Home Assistant)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+    "bdh-sdk[ha]>=0.2,<1",
+]
+
+[project.urls]
+Source = "https://github.com/blackdiamondlodge/bdh-app-radiant"
+
+[project.entry-points."blackdiamondhub.plugins"]
+radiant = "radiant.plugin:spec"
+
+[tool.setuptools.packages.find]
+include = ["radiant", "radiant.*"]
+
+[tool.setuptools.package-data]
+radiant = [
+    "templates/**/*",
+    "static/**/*",
+    "migrations/*.py",
+]

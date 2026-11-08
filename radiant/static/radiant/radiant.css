@@ -1,0 +1,99 @@
+/* Radiant system — single screen, sized for the 1920×1080 hub display (no scrolling). */
+:root {
+  --rad-bg: #222; --rad-panel: #2a2a2a; --rad-panel2: #333; --rad-gold: #FFD700; --rad-blue: #3C6090;
+  --rad-muted: #999; --rad-hot: #ff5a36; --rad-cold: #3fa9f5; --rad-ok: #4caf50;
+}
+html, body { background: var(--rad-bg) !important; color: #fff; overflow: hidden; }
+.rad-page { height: calc(100vh - 62px); padding: 12px 0; display: flex; flex-direction: column; box-sizing: border-box; }
+.rad-page > .rad-view { flex: 1; min-height: 0; }
+.rad-hidden { display: none !important; }
+.rad-loading { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--rad-muted); font-size: 1.4rem; }
+
+/* navbar */
+.rad-tabs { display: flex; gap: 6px; }
+.rad-status { color: rgba(255,255,255,.6); font-size: .85rem; margin-left: 14px; white-space: nowrap; }
+.rad-status.err { color: #ff7b70; font-weight: bold; }
+
+/* KPI strip */
+.rad-strip { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.rad-kpi { background: var(--rad-panel); border-radius: 8px; padding: 8px 14px; min-width: 150px; }
+.rad-kpi .l { color: var(--rad-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+.rad-kpi .v { font-size: 1.45rem; font-weight: bold; }
+.rad-kpi .s { color: #bbb; font-size: .8rem; }
+.rad-kpi .sub { color: #888; font-size: 1rem; font-weight: normal; }
+
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .78rem; font-weight: bold; }
+.pill.heat { background: rgba(255,90,54,.18); color: #ff8a6a; }
+.pill.cool { background: rgba(63,169,245,.18); color: #7cc5ff; }
+.pill.idle { background: #3a3a3a; color: #aaa; }
+.pill.on { background: rgba(76,175,80,.2); color: #7fd483; }
+.pill.warn { background: rgba(255,215,0,.18); color: var(--rad-gold); }
+.pill.err { background: rgba(244,67,54,.2); color: #ff7b70; }
+
+/* pending setpoint */
+.sp-pending { animation: rad-pulse 1s ease-in-out infinite; }
+@keyframes rad-pulse { 50% { opacity: .45; } }
+.sp-stat { color: var(--rad-muted); font-size: .75rem; text-align: center; min-height: 1em; }
+
+/* ---------- A: mechanical room ---------- */
+#rad-schem { width: 100%; height: 100%; background: #1b1b1b; border-radius: 10px; }
+.pipe { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.flow { fill: none; stroke-width: 3; stroke: rgba(255,255,255,.55); stroke-dasharray: 4 14; stroke-linecap: round; }
+.flow.on { animation: rad-flow .9s linear infinite; }
+.flow.off { stroke: transparent; }
+@keyframes rad-flow { to { stroke-dashoffset: -18; } }
+.lbl { fill: #ddd; font-size: 15px; }
+.lbl-s { fill: #999; font-size: 12px; }
+.lbl-b { fill: #fff; font-size: 22px; font-weight: bold; }
+.tchip rect { fill: #111; stroke: #444; }
+.tchip text { fill: #fff; font-size: 14px; font-weight: bold; }
+.box { fill: #2a2a2a; stroke: #444; stroke-width: 1.5; }
+.box.run { stroke: var(--rad-ok); stroke-width: 2.5; }
+.fan { transform-box: fill-box; transform-origin: center; }
+.fan.on { animation: rad-spin 1s linear infinite; }
+@keyframes rad-spin { to { transform: rotate(360deg); } }
+.zbtn { cursor: pointer; }
+.zbtn rect { fill: #444; }
+.zbtn:active rect { fill: #666; }
+.zbtn text { fill: #fff; font-size: 20px; font-weight: bold; pointer-events: none; }
+.zbtn.disabled { opacity: .3; cursor: default; }
+
+/* ---------- B: dashboard cards ---------- */
+.rad-gridB { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; height: 100%; }
+.rad-card { background: var(--rad-panel); border-radius: 10px; padding: 14px; }
+.rad-card h6 { color: var(--rad-gold); margin: 0 0 10px; font-size: .95rem; text-transform: uppercase; letter-spacing: .05em; }
+.rad-zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+.rad-zone { background: var(--rad-panel2); border-radius: 10px; padding: 12px; border-left: 5px solid #555; }
+.rad-zone.heat { border-left-color: var(--rad-hot); }
+.rad-zone.cool { border-left-color: var(--rad-cold); }
+.rad-zone .name { font-weight: bold; }
+.rad-zone .cur { font-size: 2.4rem; font-weight: bold; line-height: 1; }
+.rad-tgt { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.rad-tgt button { width: 48px; height: 48px; border-radius: 8px; border: 0; background: #555; color: #fff; font-size: 1.3rem; }
+.rad-tgt button:active { background: #777; }
+.rad-tgt button:disabled { opacity: .3; }
+.rad-tgt .t { font-size: 1.3rem; min-width: 70px; text-align: center; color: var(--rad-gold); font-weight: bold; }
+.rad-zone .meta { color: #aaa; font-size: .8rem; margin-top: 8px; display: flex; justify-content: space-between; }
+.rad-hp { background: var(--rad-panel2); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.rad-hp .row1 { display: flex; justify-content: space-between; align-items: center; }
+.rad-hp .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.rad-hp .stats div { background: #2a2a2a; border-radius: 6px; padding: 6px 8px; }
+.rad-hp .stats .l { color: #888; font-size: .7rem; text-transform: uppercase; }
+.rad-hp .stats .v { font-weight: bold; font-size: 1.05rem; }
+.rad-tank { display: flex; gap: 14px; align-items: center; }
+.rad-tankbar { width: 46px; height: 150px; border-radius: 23px; background: #111; position: relative; overflow: hidden; border: 2px solid #444; }
+.rad-tankbar .fill { position: absolute; bottom: 0; left: 0; right: 0; }
+.rad-tankbar .mark { position: absolute; left: -4px; right: -4px; height: 2px; background: var(--rad-gold); }
+.rad-spark { width: 100%; height: 150px; }
+.rad-mini td { padding: 3px 8px; }
+.rad-mini td:first-child { color: #aaa; }
+
+/* ---------- C: house section ---------- */
+.rad-gridC { display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px; height: 100%; }
+#rad-house { width: 100%; height: auto; max-height: calc(100vh - 62px - 160px); }
+.room { stroke: #111; stroke-width: 3; cursor: pointer; }
+.roomtxt { pointer-events: none; }
+.rad-sel { background: var(--rad-panel2); border-radius: 10px; padding: 16px; }
+.rad-bigdial { font-size: 4rem; font-weight: bold; line-height: 1; }
+.rad-legend { display: flex; align-items: center; gap: 8px; color: #aaa; font-size: .8rem; }
+.rad-legend .bar { width: 180px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, #3fa9f5, #6fd3a0, #ffd34d, #ff5a36); }
