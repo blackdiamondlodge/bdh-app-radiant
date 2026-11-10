@@ -3,7 +3,7 @@
  *
  * Polls /radiant/api/states/ every 10 s and /radiant/api/history/ every 5 min,
  * and renders one of three layouts (A mechanical room, B overview cards,
- * C house section).
+ * C house section). Phones (≤600px) get their own Zones / Plant / Trend views.
  *
  * Setpoint changes are debounced per zone because the Nest integration is
  * rate limited. Each +/- press restarts that zone's timer. Only the final
@@ -30,6 +30,11 @@
   let S = null;          // latest normalized state from the server
   let H = null;          // latest history
   let layout = localStorage.getItem('radiant.layout') || 'A';
+  // Phones get their own three views (zones / plant / trend).
+  const PTABS = ['zones', 'plant', 'trend'];
+  const phoneMQ = window.matchMedia('(max-width: 600px)');
+  let ptab = localStorage.getItem('radiant.phoneTab');
+  if (!PTABS.includes(ptab)) ptab = 'zones';
   let selZone = 'main_floor';
   let lastOk = null;
   let error = null;
@@ -38,6 +43,7 @@
 
   // ── helpers ──────────────────────────────────────────────────────────
   const isNum = v => typeof v === 'number' && !isNaN(v);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const f1 = v => isNum(v) ? v.toFixed(1) : '—';
   const deg = v => isNum(v) ? `${v.toFixed(1)}°` : '—';
   const kw = v => isNum(v) ? (v / 1000).toFixed(2) : '—';
@@ -148,23 +154,32 @@
   function flashError(msg) { flash = { msg, until: Date.now() + 8000 }; updateStatus(); }
   function updateStatus() {
     const el = document.getElementById('rad-status');
-    if (flash && Date.now() < flash.until) { el.textContent = `⚠ ${flash.msg}`; el.className = 'rad-status err'; return; }
-    if (error) { el.textContent = `⚠ ${error}`; el.className = 'rad-status err'; return; }
-    if (!lastOk) { el.textContent = 'connecting…'; el.className = 'rad-status'; return; }
+    // The age part is hidden on narrow navbars; the title keeps the full text.
+    const set = (main, age, cls) => {
+      el.innerHTML = `<span class="rad-st-t">${esc(main)}<span class="rad-age">${esc(age)}</span></span>`;
+      el.title = main + age;
+      el.className = cls;
+    };
+    if (flash && Date.now() < flash.until) { set(`⚠ ${flash.msg}`, '', 'rad-status err'); return; }
+    if (error) { set(`⚠ ${error}`, '', 'rad-status err'); return; }
+    if (!lastOk) { set('connecting…', '', 'rad-status'); return; }
     const s = Math.round((Date.now() - lastOk) / 1000);
-    el.textContent = `live · ${s < 5 ? 'just now' : s + 's ago'}`;
-    el.className = 'rad-status';
+    set('live', ` · ${s < 5 ? 'just now' : s + 's ago'}`, 'rad-status');
   }
 
   // ── KPI strip ────────────────────────────────────────────────────────
+  function seasonInfo() {
+    return S.season === 'heat' ? { name: 'Heat', icon: 'fa-fire', color: '#ff8a5c' }
+      : S.season === 'cool' ? { name: 'Cool', icon: 'fa-snowflake', color: '#5ec8ff' }
+      : { name: 'Off', icon: 'fa-power-off', color: '#9fb4c8' };
+  }
+
   function renderStrip() {
     const running = S.hp.filter(h => h.running).length;
     const w = S.hp.reduce((a, h) => a + (h.w || 0), 0), th = S.hp.reduce((a, h) => a + (h.therm || 0), 0);
     const calling = Object.values(S.zones).filter(zoneOn).length;
     const charging = S.stage1 || S.stage2 || S.backup;
-    const mode = S.season === 'heat' ? 'Heat' : S.season === 'cool' ? 'Cool' : 'Off';
-    const modeIc = S.season === 'heat' ? 'fa-fire' : S.season === 'cool' ? 'fa-snowflake' : 'fa-power-off';
-    const modeC = S.season === 'heat' ? '#ff8a5c' : S.season === 'cool' ? '#5ec8ff' : '#9fb4c8';
+    const { name: mode, icon: modeIc, color: modeC } = seasonInfo();
     const kpi = (ic, c, glow, l, v, sub) => `<div class="rad-kpi"><div class="ic ${glow ? 'glow' : ''}" style="--kc:${c}"><i class="fas ${ic}"></i></div><div class="body"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub}</div></div></div>`;
     const energy = H && isNum(H.energyTodayTotal) ? `${f1(H.energyTodayTotal)} kWh` : '—';
     document.getElementById('rad-strip').innerHTML = [
@@ -299,18 +314,18 @@
     renderSpark();
   }
 
-  function renderSpark() {
-    const g = document.getElementById('rad-sparkB');
-    const range = document.getElementById('rad-sparkRange');
-    if (!H) { g.innerHTML = '<text x="400" y="80" fill="rgba(232,238,245,.5)" font-size="16" text-anchor="middle">loading history…</text>'; range.textContent = ''; return; }
+  // 24 h chart drawn into a W×HT viewBox (stretched with preserveAspectRatio="none").
+  function sparkSvg(W, HT, band) {
+    const msg = t => ({ svg: `<text x="${W / 2}" y="${HT / 2 + 5}" fill="rgba(232,238,245,.5)" font-size="16" text-anchor="middle">${t}</text>`, range: '' });
+    if (!H) return msg('loading history…');
     const series = [[H.tank, '#ffc35c'], [H.supply, '#ff6a3d'], [H.avgReturn, '#5ec8ff']];
     const all = series.flatMap(([s]) => s).filter(isNum);
-    if (!all.length) { g.innerHTML = '<text x="400" y="80" fill="rgba(232,238,245,.5)" font-size="16" text-anchor="middle">no history</text>'; range.textContent = ''; return; }
+    if (!all.length) return msg('no history');
     const lo = Math.floor(Math.min(...all) - 1), hi = Math.ceil(Math.max(...all) + 1);
-    const n = H.tank.length, W = 800, HT = 150;
+    const n = H.tank.length;
     const x = k => k * W / (n - 1), y = v => HT - (v - lo) / (hi - lo) * HT;
     let p = '';
-    H.hpRunning.forEach((on, k) => { if (on) p += `<rect x="${k * W / n}" y="0" width="${W / n + 0.5}" height="${HT}" fill="#3cc8b4" opacity=".1"/>`; });
+    H.hpRunning.forEach((on, k) => { if (on) p += `<rect x="${k * W / n}" y="0" width="${W / n + 0.5}" height="${HT}" fill="${band[0]}" opacity="${band[1]}"/>`; });
     series.forEach(([s, c]) => {
       // break the line across gaps
       let seg = [];
@@ -318,8 +333,13 @@
       s.forEach((v, k) => { if (isNum(v)) seg.push(`${x(k).toFixed(1)},${y(v).toFixed(1)}`); else flush(); });
       flush();
     });
-    g.innerHTML = p;
-    range.textContent = `${lo}° – ${hi}° · 24 h`;
+    return { svg: p, range: `${lo}° – ${hi}° · 24 h` };
+  }
+
+  function renderSpark() {
+    const r = sparkSvg(800, 150, ['#3cc8b4', 0.1]);
+    document.getElementById('rad-sparkB').innerHTML = r.svg;
+    document.getElementById('rad-sparkRange').textContent = r.range;
   }
 
   // ── Layout C: house section ─────────────────────────────────────────
@@ -368,16 +388,137 @@
     document.getElementById('rad-miniPlant').innerHTML = m;
   }
 
+  // ── Phones: Zones / Plant / Trend ───────────────────────────────────
+  const SUP = '#4a9d84', RET = '#4f8fc4';
+  const stateWord = a => (a === 'unavailable' ? 'offline' : a || 'idle');
+  const hz = P => (isNum(P.hz) ? Math.round(P.hz) : '—');
+  const cop = P => (isNum(P.cop) ? P.cop.toFixed(2) : '—');
+  const zoneCls = Z => (Z.act === 'heating' ? 'heat' : Z.act === 'cooling' ? 'cool' : '');
+
+  function renderPZones() {
+    const m = seasonInfo();
+    const running = S.hp.filter(h => h.running).length;
+    const calling = Object.values(S.zones).filter(zoneOn).length;
+    const hero = `<div class="rp-glass rp-hero">
+        <div class="rp-mode"><div class="ic" style="--kc:${m.color}"><i class="fas ${m.icon}"></i></div><div class="t" style="color:${m.color}">${m.name}</div>${S.vacation ? '<span class="rp-vac">Vacation mode</span>' : ''}</div>
+        <div class="rp-k4">
+          <div><b>${f1(S.outdoor)}°</b><small>Outdoor</small></div>
+          <div><b style="color:${tcol(S.tank)}">${f1(S.tank)}°</b><small>Buffer</small></div>
+          <div><b>${running}/${S.hp.length}</b><small>Pumps</small></div>
+          <div><b ${calling ? 'style="color:#ffb074"' : ''}>${calling}/${ZONES.length}</b><small>Calling</small></div>
+        </div></div>`;
+    const rows = ZONES.map(z => {
+      const Z = S.zones[z.id], ok = canSet(Z);
+      return `<div class="rp-glass rp-zone ${zoneCls(Z)}">
+          <div class="n"><b>${z.name}</b><small>${stateWord(Z.act)} · return ${f1(Z.ret)}°<span class="rp-pst" data-pstat="${z.id}" data-default="">${spStatus(z.id, '')}</span></small></div>
+          <div class="rt">${f1(Z.cur)}°</div>
+          <div class="rp-step">
+            <button type="button" ${ok ? `data-bump="${z.id}" data-d="-1"` : 'disabled'} aria-label="Lower ${z.name}"><i class="fas fa-minus"></i></button>
+            <span class="v ${spCls(z.id)}" ${Z.mode === 'heat_cool' ? 'style="font-size:11px"' : ''}>${spText(Z)}</span>
+            <button type="button" ${ok ? `data-bump="${z.id}" data-d="1"` : 'disabled'} aria-label="Raise ${z.name}"><i class="fas fa-plus"></i></button>
+          </div></div>`;
+    }).join('');
+    document.getElementById('rad-pZones').innerHTML = `${hero}<div class="rp-lbl rp-sec">Zones</div>${rows}`;
+  }
+
+  function plantWidth() {
+    return Math.max(300, Math.min(440, root.clientWidth - 8));
+  }
+
+  // Vertical schematic: sources → buffer tank → zones. SVG pipes, HTML cards on top.
+  function renderPPlant() {
+    const W = plantWidth();
+    const srcs = [...S.hp.map((P, i) => ({ P, i, run: P.running, sup: P.sup })), { bk: true, run: S.backup, sup: S.backupSup }];
+    const n = srcs.length, gap = 7, cw = (W - 20 - gap * (n - 1)) / n;
+    const cx = i => 14 + i * (cw + gap) + cw / 2;
+    const tx = W / 2 - 90, tTop = 160, tBot = 256;
+    const anyHP = S.hp.some(h => h.running) || S.backup;
+    const anyZone = Object.values(S.zones).some(zoneOn);
+    const zTop = i => 318 + i * 72, zMid = i => zTop(i) + 31;
+    const last = ZONES.length - 1, rRet = W - 14, zRight = W - 30;
+    const pipe = (d, c, w, on) => `<path d="${d}" stroke="${c}" stroke-width="${w}"${c === RET ? ' opacity=".9"' : ''}/>${on ? `<path class="rp-flow" d="${d}"/>` : ''}`;
+    let svg = '', html = '';
+
+    // primary return: tank → up the left edge → across the top → into each source
+    svg += pipe(`M${tx + 4},236 H4 V6 H${cx(n - 1)}`, RET, 4, anyHP);
+    srcs.forEach((s, i) => { svg += pipe(`M${cx(i)},6 V16`, RET, 4, s.run); });
+    html += `<div class="rp-pill r" style="left:4px;top:180px;transform:translate(-4px,-50%)">ret ${f1(S.hpReturn)}°</div>`;
+
+    // sources → tank supply
+    srcs.forEach((s, i) => {
+      const x = cx(i), ex = n > 1 ? tx + 55 + i * (78 / (n - 1)) : tx + 90;
+      svg += pipe(Math.abs(x - ex) < 1 ? `M${x},100 V${tTop}` : `M${x},100 V128 H${ex} V${tTop}`, SUP, 5, s.run);
+      html += `<div class="rp-pill" style="left:${x}px;top:116px">${f1(s.sup)}°</div>`;
+      const style = `left:${x - cw / 2}px;width:${cw}px`;
+      if (s.bk) {
+        html += `<div class="rp-glass rp-src ${s.run ? 'run' : ''}" style="${style}"><b>Backup</b><small>${s.run ? '<span class="rp-on">on</span>' : 'off'}</small><small>AECO stage</small></div>`;
+      } else {
+        const P = s.P, fault = P.fault === 'ok' ? '<span class="rp-ok">OK</span>' : `<span class="rp-ok bad">${P.fault || '—'}</span>`;
+        html += `<div class="rp-glass rp-src ${s.run ? 'run' : ''}" style="${style}"><div class="hd"><b>HP ${s.i + 1}</b>${fault}</div>
+          <small>${stateWord(P.op)}${P.defrost ? ' · defrost' : ''} · ${hz(P)} Hz</small><small>${isNum(P.w) ? (P.w / 1000).toFixed(1) : '—'} kW · COP ${isNum(P.cop) ? P.cop.toFixed(1) : '—'}</small></div>`;
+      }
+    });
+
+    // buffer tank
+    const charging = S.stage1 || S.stage2 || S.backup;
+    html += `<div class="rp-tank" style="left:${tx}px;background:linear-gradient(90deg,${tcol(isNum(S.tank) ? S.tank + 2 : null)},${tcol(S.hpReturn)});box-shadow:0 0 34px ${tcol(S.tank)}55">
+        <small>BUFFER</small><b>${f1(S.tank)}°</b><span>target ${f1(S.tankTarget)}° · ${charging ? 'heating' : 'satisfied'}</span></div>`;
+
+    // secondary: radiant supply down the left, mixed return up the right
+    svg += pipe(`M${tx + 55},${tBot} V290 H20 V${zMid(last)}`, SUP, 5, anyZone);
+    svg += pipe(`M${rRet},${zMid(last)} V290 H${tx + 131} V${tBot}`, RET, 4, anyZone);
+    html += `<div class="rp-pill" style="left:${tx - 9}px;top:290px">supply ${f1(S.radSupply)}°</div>`;
+    html += `<div class="rp-pill r" style="left:${tx + 195}px;top:290px">return ${f1(avgRet())}°</div>`;
+    html += '<div class="rp-cap" style="left:42px;top:300px">Radiant zones</div>';
+    ZONES.forEach((z, i) => {
+      const Z = S.zones[z.id], on = zoneOn(Z);
+      svg += pipe(`M20,${zMid(i)} H40`, SUP, 5, on) + pipe(`M${zRight},${zMid(i)} H${rRet}`, RET, 4, on);
+      html += `<div class="rp-glass rp-zr ${zoneCls(Z)}" style="top:${zTop(i)}px;width:${zRight - 40}px"><div class="n"><b>${z.name}</b><small>${stateWord(Z.act)} · return ${f1(Z.ret)}°</small></div><div class="t">${f1(Z.cur)}°</div></div>`;
+    });
+
+    const HT = zTop(last) + 66;
+    document.getElementById('rad-pPlant').innerHTML = `<div class="rp-plant" style="width:${W}px;height:${HT}px">
+        <svg width="${W}" height="${HT}" viewBox="0 0 ${W} ${HT}" fill="none" stroke-linejoin="round" aria-hidden="true">${svg}</svg>${html}</div>`;
+  }
+
+  function renderPTrend() {
+    const r = sparkSvg(344, 190, ['#3cc8b4', 0.16]);
+    document.getElementById('rad-pSpark').innerHTML = r.svg;
+    document.getElementById('rad-pSparkRange').textContent = r.range;
+    const w = S.hp.reduce((a, h) => a + (h.w || 0), 0), th = S.hp.reduce((a, h) => a + (h.therm || 0), 0);
+    const energy = H && isNum(H.energyTodayTotal) ? f1(H.energyTodayTotal) : '—';
+    document.getElementById('rad-pTrendStats').innerHTML = `<div class="rp-stats">
+        <div class="rp-glass"><div class="rp-lbl"><i class="fas fa-bolt" style="color:#ffc35c"></i> Power</div><div class="big">${kw(w)} <small>kW</small></div><div class="sub">${(th / 1000).toFixed(1)} kW thermal</div></div>
+        <div class="rp-glass"><div class="rp-lbl"><i class="fas fa-plug" style="color:#b79cff"></i> Today</div><div class="big">${energy} <small>kWh</small></div><div class="sub">heat pump electrical</div></div>
+      </div><div class="rp-lbl rp-sec">Heat pumps</div>` + S.hp.map((P, i) => `<div class="rp-glass rp-hp ${P.running ? 'run' : ''}"><b>HP ${i + 1}</b><span>${hz(P)} Hz</span><span>COP ${cop(P)}</span><span>${isNum(P.flow) ? Math.round(P.flow) : '—'} L/m</span><span>ΔT ${isNum(P.dT) ? f1(P.dT) + '°' : '—'}</span></div>`).join('');
+  }
+
+  function syncPhoneTabs() {
+    document.querySelectorAll('#rad-ptabs [data-ptab]').forEach(b => {
+      b.classList.toggle('on', b.dataset.ptab === ptab);
+      b.setAttribute('aria-selected', b.dataset.ptab === ptab);
+    });
+  }
+
+  function renderPhone() {
+    syncPhoneTabs();
+    PTABS.forEach(k => document.getElementById('rad-p' + k[0].toUpperCase() + k.slice(1)).classList.toggle('rad-hidden', k !== ptab));
+    ({ zones: renderPZones, plant: renderPPlant, trend: renderPTrend })[ptab]();
+  }
+
   // ── render loop ─────────────────────────────────────────────────────
   function render(force) {
     if (!S) return;
-    const sig = JSON.stringify([S, H && H.end, layout, selZone,
+    const phone = phoneMQ.matches;
+    const sig = JSON.stringify([S, H && H.end, layout, selZone, phone, ptab, phone && plantWidth(),
       Object.entries(pending).map(([k, p]) => [k, p.value, p.status])]);
     if (!force && sig === lastSig) return;
     lastSig = sig;
     document.getElementById('rad-loading').classList.add('rad-hidden');
-    ['A', 'B', 'C'].forEach(k => document.getElementById('rad-view' + k).classList.toggle('rad-hidden', k !== layout));
+    document.getElementById('rad-phone').classList.toggle('rad-hidden', !phone);
+    ['A', 'B', 'C'].forEach(k => document.getElementById('rad-view' + k).classList.toggle('rad-hidden', phone || k !== layout));
     document.querySelectorAll('#rad-tabs [data-layout]').forEach(b => b.classList.toggle('active', b.dataset.layout === layout));
+    if (phone) { renderPhone(); return; }
     renderStrip();
     ({ A: renderA, B: renderB, C: renderC })[layout]();
   }
@@ -410,6 +551,15 @@
       render(true);
       return;
     }
+    const pt = e.target.closest('#rad-ptabs [data-ptab]');
+    if (pt) {
+      ptab = pt.dataset.ptab;
+      localStorage.setItem('radiant.phoneTab', ptab);
+      window.scrollTo(0, 0);
+      syncPhoneTabs();
+      render(true);
+      return;
+    }
     const b = e.target.closest('[data-bump]');
     if (b) { bump(b.dataset.bump, parseFloat(b.dataset.d) * STEP); return; }
     const s = e.target.closest('[data-select]');
@@ -427,6 +577,9 @@
   const urlLayout = new URLSearchParams(location.search).get('layout');
   if (urlLayout) layout = urlLayout.toUpperCase();
   if (!['A', 'B', 'C'].includes(layout)) layout = 'A';
+  syncPhoneTabs();
+  phoneMQ.addEventListener('change', () => render(true));
+  window.addEventListener('resize', () => render(false));
   pollStates();
   pollHistory();
   setInterval(pollStates, POLL_MS);
