@@ -6,9 +6,14 @@
 {% block navbar_extras %}
 <div class="navbar-extras">
     <div class="rad-tabs" id="rad-tabs">
-        <button type="button" class="navbar-toggle-btn" data-layout="A"><i class="fas fa-gears me-1"></i>Mechanical room</button>
-        <button type="button" class="navbar-toggle-btn" data-layout="B"><i class="fas fa-table-cells-large me-1"></i>Overview</button>
-        <button type="button" class="navbar-toggle-btn" data-layout="C"><i class="fas fa-house me-1"></i>House</button>
+        <button type="button" class="navbar-toggle-btn" data-layout="A" title="Mechanical room"><i class="fas fa-gears"></i><span class="rad-tl">Mechanical room</span></button>
+        <button type="button" class="navbar-toggle-btn" data-layout="B" title="Overview"><i class="fas fa-table-cells-large"></i><span class="rad-tl">Overview</span></button>
+        <button type="button" class="navbar-toggle-btn" data-layout="C" title="House"><i class="fas fa-house"></i><span class="rad-tl">House</span></button>
+    </div>
+    <div class="rad-seg" id="rad-ptabs" role="tablist" aria-label="Radiant views">
+        <button type="button" role="tab" data-ptab="zones"><i class="fas fa-home"></i>Zones</button>
+        <button type="button" role="tab" data-ptab="plant"><i class="fas fa-project-diagram"></i>Plant</button>
+        <button type="button" role="tab" data-ptab="trend"><i class="fas fa-chart-line"></i>Trend</button>
     </div>
     <span class="rad-status" id="rad-status">connecting…</span>
 </div>
@@ -81,6 +86,25 @@
                     <svg id="rad-miniPlant" viewBox="0 0 560 230"></svg>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Phones (≤600px): their own Zones / Plant / Trend views -->
+    <div class="rad-phone rad-hidden" id="rad-phone">
+        <div class="rad-pview" id="rad-pZones"></div>
+        <div class="rad-pview" id="rad-pPlant"></div>
+        <div class="rad-pview" id="rad-pTrend">
+            <div class="rp-glass rp-chart">
+                <div class="rp-lbl d-flex justify-content-between"><span>Last 24 h</span><span id="rad-pSparkRange"></span></div>
+                <svg class="rp-spark" id="rad-pSpark" viewBox="0 0 344 190" preserveAspectRatio="none"></svg>
+                <div class="rp-legend">
+                    <span><i style="background:#ff6a3d"></i>radiant supply</span>
+                    <span><i style="background:#5ec8ff"></i>zone return</span>
+                    <span><i style="background:#ffc35c"></i>buffer</span>
+                    <span><i class="sq"></i>HP running</span>
+                </div>
+            </div>
+            <div id="rad-pTrendStats"></div>
         </div>
     </div>
 </div>
